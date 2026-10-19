@@ -1,64 +1,72 @@
-# Assignment 3: Deep Learning Architectures (CNNs)
-## A Comparative Study: LeNet-5 (1998) & AlexNet (2012) on CIFAR-10
+# LeNet-5 vs AlexNet on CIFAR-10
 
-**Student Name**: Abrham Yilma  
-**Course**: Deep Learning 
+A PyTorch reimplementation and head-to-head benchmark of two landmark convolutional networks: **LeNet-5**
+(LeCun et al., 1998) and **AlexNet** (Krizhevsky et al., 2012). Both are trained under the same conditions on
+CIFAR-10 to measure what fourteen years of architecture changes bought in accuracy and what they cost in compute.
+
+![Training loss and test accuracy](training_curves.png)
+
+## Results
+
+Both models were trained for 5 epochs with Adam on a Tesla T4 GPU (LeNet-5 lr = 1e-3, AlexNet lr = 1e-4).
+
+| | LeNet-5 | AlexNet |
+|---|---|---|
+| Parameters | ~60K | ~60M |
+| Input size | 32 × 32 × 3 | 224 × 224 × 3 (resized) |
+| Test accuracy | 55.7% | **78.1%** |
+| Final training loss | 1.21 | **0.56** |
+| Time per epoch | **13.7 s** | 133.1 s |
+
+AlexNet is **22.4 points more accurate** but **9.7× slower per epoch**.
+
+Per-class F1 on the 10,000-image test set:
+
+| Class | LeNet-5 | AlexNet | | Class | LeNet-5 | AlexNet |
+|---|---|---|---|---|---|---|
+| plane | 0.60 | 0.80 | | frog | 0.60 | 0.84 |
+| car | 0.69 | 0.87 | | horse | 0.61 | 0.84 |
+| bird | 0.46 | 0.70 | | ship | 0.66 | 0.82 |
+| cat | 0.38 | 0.63 | | truck | 0.61 | 0.82 |
+| deer | 0.47 | 0.76 | | dog | 0.43 | 0.71 |
+
+Cats and dogs are the hardest classes for both models. AlexNet's biggest gains are on exactly those
+fine-grained animal classes.
+
+![Confusion matrices](confusion_matrix.png)
+
+## What changed between 1998 and 2012
+
+| Feature | LeNet-5 (1998) | AlexNet (2012) | Effect |
+|---|---|---|---|
+| Activation | Tanh | ReLU | No saturation, so gradients flow through deeper stacks and training converges faster. |
+| Pooling | Average | Overlapping max | Keeps the strongest responses and slightly reduces overfitting. |
+| Regularisation | None | Dropout (0.5) + data augmentation | Makes a 60M-parameter model trainable without memorising the data. |
+| Normalisation | None | Local Response Normalisation | Lateral inhibition between feature maps (since replaced by BatchNorm). |
+| Scale | 7 layers, ~60K params | 8 layers, ~60M params | ~1000× more capacity for complex colour features. |
+| Hardware | CPU | Two GPUs in parallel | Made the scale above practical. |
+
+## Implementation notes
+
+- **LeNet-5** follows the original paper, with the first convolution changed to accept 3-channel RGB input at 32 × 32.
+- **AlexNet** follows the 2012 paper, including LRN and overlapping pooling. CIFAR images are resized to 224 × 224 on the fly.
+- Both models share one training/evaluation pipeline that tracks loss, accuracy and time per epoch, then
+  produces classification reports and confusion matrices.
+
+## Files
+
+| File | Contents |
+|---|---|
+| `lenet5_vs_alexnet_cifar10.ipynb` | Background, both implementations, training, evaluation and conclusions |
+| `lenet5_vs_alexnet_slides.pptx` | Slide deck summarising the architectures and results |
+| `training_curves.png`, `confusion_matrix.png` | Result figures |
+
+## Run it
+
+Open the notebook in Google Colab, select a GPU runtime, and run all cells. CIFAR-10 downloads automatically
+through `torchvision`.
+
+**Stack:** PyTorch · torchvision · scikit-learn · matplotlib
 
 ---
-
-### 📌 Project Overview
-This repository contains a theoretical and empirical comparative analysis of two landmark Convolutional Neural Networks (CNNs): **LeNet-5** and **AlexNet**. The evolution from LeNet-5 to AlexNet represents the story of scaling up in deep learning, driven by the availability of larger datasets, GPU compute scale, and innovative activation/regularization methods.
-
-### 🎯 Objectives
-* **Explain** the motivation behind LeNet-5 and AlexNet architectures.
-* **Describe** the architectural innovations introduced by AlexNet compared to LeNet-5.
-* **Implement** both deep learning models in PyTorch.
-* **Train and Evaluate** the models on the realistic CIFAR-10 dataset.
-* **Analyze** their strengths, weaknesses, computational tradeoffs, and evolutionary significance.
-
----
-
-### 📁 Repository Contents
-* `CNN Assignment LeNet vs AlexNet colab.ipynb`: The primary Google Colab notebook containing the PyTorch implementations, data preprocessing, training loops, and evaluation metrics.
-* `LeNet5_vs_AlexNet_Presentation.pptx`: The slide deck summarizing the theoretical background, architectural paradigms, and training results.
-
----
-
-### 🏗️ Architectural Paradigm Comparison
-
-| Feature | LeNet-5 (1998) | AlexNet (2012) | Evolutionary Impact |
-| :--- | :--- | :--- | :--- |
-| **Input Dimensions** | 32 x 32 x 1 (Grayscale) | 224 x 224 x 3 (RGB Color) | Handles higher spatial resolution and rich color. |
-| **Activation Function** | Sigmoid / Tanh | ReLU (Rectified Linear Unit) | Solves the vanishing gradient problem; 6x faster convergence. |
-| **Pooling Mechanism** | Average Pooling | Overlapping Max Pooling | Reduces overfitting and preserves spatial representations. |
-| **Regularization** | None (Weight decay only) | Dropout (0.5) & Data Augmentation | Prevents co-adaptation of neurons; crucial for scaling. |
-| **Normalization** | None | Local Response Normalization (LRN) | Emulates lateral inhibition in biological brain cells. |
-| **Depth & Parameters** | 7 layers, ~60K parameters | 8 layers, ~60M parameters | 1000x scale allows representation of highly complex features. |
-| **Compute Target** | Single CPU | Dual-GPU Parallelization | Unlocks scaling parameters from 60K to 60M. |
-
----
-
-### 📊 Dataset & Processing Strategy
-To evaluate both models under similar conditions, this project utilizes the **CIFAR-10** dataset (60,000 color images across 10 balanced classes). 
-* **LeNet-5**: Maintained the 32x32 spatial resolution but modified the first convolutional layer to accept 3-channel RGB input.
-* **AlexNet**: Images were dynamically resized to 224x224 during dataloading to showcase standard AlexNet behavior.
-
----
-
-### 🏆 Empirical Results
-
-Both models were trained using the Adam optimizer (LeNet-5 LR: 0.001, AlexNet LR: 0.0001) for 5 epochs on a Tesla T4 GPU.
-
-**Convergence & Accuracy (Epoch 5):**
-* **AlexNet**: 78.08% Test Accuracy | 0.5577 Loss.
-* **LeNet-5**: 55.69% Test Accuracy | 1.2130 Loss.
-* *AlexNet achieved a +22.39% absolute gain in accuracy and over 2.1x lower loss*.
-
-**Computational Time:**
-* **LeNet-5**: 13.71 seconds / epoch.
-* **AlexNet**: 133.06 seconds / epoch.
-* *Tradeoff: AlexNet is approximately 9.7x slower to train due to spatial resize workloads and massive parameter scaling*.
-
-**Class Performance Highlights:**
-* **AlexNet** achieved its highest precision on `ship` (94%) and highest recall on `truck` (91%). 
-* **LeNet-5** struggled heavily with complex classes like `cat` (42% precision) and `dog` (54% precision), whereas AlexNet significantly boosted these metrics (64% and 74% precision, respectively).
+Abrham Yilma · Built during my MSc at Addis Ababa University
